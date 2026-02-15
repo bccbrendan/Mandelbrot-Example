@@ -1,6 +1,8 @@
 #pragma once
 #include "bitmap.h"
 #include <string>
+#include <condition_variable>
+#include <mutex>
 #include <memory>
 
 namespace Mandelbrot{
@@ -23,6 +25,8 @@ public:
     ~Mandelbrot(){};
 private:
     bool _validHistogram();
+    mutex histMutex;
+    condition_variable _histcv;
 
 };
 
