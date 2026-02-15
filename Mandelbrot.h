@@ -1,0 +1,29 @@
+#pragma once
+#include "bitmap.h"
+#include <string>
+#include <memory>
+
+namespace Mandelbrot{
+
+class Mandelbrot{
+public:
+    Bitmap _bitmap;
+    int _width{0};
+    int _height{0};
+    enum drawColor{RED,GREEN,BLUE};
+    unique_ptr<int[]> colourHistogram;
+    unique_ptr<int[]> fractalData;
+
+public:
+    Mandelbrot(int width, int height);
+    static int getIterations(double x, double y);
+    static const int MAX_ITERATIONS = (1<<10);
+    void draw(string fileName, drawColor color);
+    void printHistogram();
+    ~Mandelbrot(){};
+private:
+    bool _validHistogram();
+
+};
+
+};
