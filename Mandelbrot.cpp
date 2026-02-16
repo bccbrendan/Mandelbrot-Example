@@ -45,7 +45,7 @@ void Mandelbrot::draw(string fileName, drawColor colourSelection ){
     int* p = colourHistogram.get();
     int* pfractalData = fractalData.get();
 
-    const int NUM_THREADS = 32;
+    const int NUM_THREADS = 1;
     std::vector<std::thread> threads;
     threads.reserve(NUM_THREADS);
 
