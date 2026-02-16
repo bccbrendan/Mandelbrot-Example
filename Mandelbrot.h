@@ -17,7 +17,7 @@ public:
     unique_ptr<int[]> fractalData;
 
 public:
-    Mandelbrot(int width, int height);
+    Mandelbrot(int width, int height, const int N_THREADS);
     static int getIterations(double x, double y);
     static const int MAX_ITERATIONS = (1<<10);
     void draw(string fileName, drawColor color);
@@ -27,6 +27,7 @@ private:
     bool _validHistogram();
     mutex histMutex;
     condition_variable _histcv;
+    const int NUM_THREADS{1};
 
 };
 

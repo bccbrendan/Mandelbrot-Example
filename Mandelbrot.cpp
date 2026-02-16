@@ -9,12 +9,13 @@ using namespace std;
 
 namespace Mandelbrot{
 
-Mandelbrot::Mandelbrot(int width, int height):
+Mandelbrot::Mandelbrot(int width, int height, const int N_THREADS):
     _bitmap(width, height),
     _width(width),
     _height(height), 
     colourHistogram(new int[MAX_ITERATIONS]{0}),
-    fractalData(new int[_width*_height]) 
+    fractalData(new int[_width*_height]),
+    NUM_THREADS(N_THREADS)
     {
 }
 
@@ -45,7 +46,6 @@ void Mandelbrot::draw(string fileName, drawColor colourSelection ){
     int* p = colourHistogram.get();
     int* pfractalData = fractalData.get();
 
-    const int NUM_THREADS = 1;
     std::vector<std::thread> threads;
     threads.reserve(NUM_THREADS);
 
