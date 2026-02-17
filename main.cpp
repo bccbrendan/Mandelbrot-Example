@@ -9,7 +9,7 @@ int main(int argc, char* argv[]){
     std::cout << "Number of Threads = " << NUM_THREADS << std::endl;
 
     Mandelbrot::Mandelbrot myplot(1920, 1080, NUM_THREADS);
-    myplot.draw("./images/green-1-thread.bmp", Mandelbrot::Mandelbrot::GREEN);
+    myplot.draw("./images/green-parallel-threads.bmp", Mandelbrot::Mandelbrot::GREEN);
 
     return 0;
 }
