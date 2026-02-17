@@ -23,7 +23,6 @@ int Mandelbrot::getIterations(double x, double y){
     /*
     Will return any number up to MAX_ITERATIONS (1024)
     */
-    const int MAX_ITERATIONS = (1<<10); // 1024
     const int THRESHOLD = 2; // 2
     
     complex<double> z(0); // 0 + 0j
@@ -70,22 +69,6 @@ void Mandelbrot::draw(string fileName, drawColor colourSelection ){
         }
     };
 
-    /*for (int y = NUM_THREADS-1; y < _height; y+= NUM_THREADS){
-        for (int x = NUM_THREADS-1; x < _width; x+=NUM_THREADS){
-            double xFractal = (x - _width/2 - 150) * 2.0/_width;
-            double yFractal = (y - _height/2) * 2.0/_width;
-
-            int num_iters = getIterations(xFractal, yFractal);
-
-            // create a pixel map for data
-            pfractalData[y*_width + x] = num_iters;
-
-            // remove max interations from histogram for prettier plot.
-            if (num_iters != MAX_ITERATIONS){
-                p[num_iters]++;
-            }
-            }
-        }*/
     for(int tid = 0; tid < NUM_THREADS; tid++){
         threads.emplace_back(work, tid);
     }
