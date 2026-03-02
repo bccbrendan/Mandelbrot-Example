@@ -3,11 +3,50 @@
 #include <iostream>
 #include <vector>
 #include <math.h>
+#include <cstdint>
+#if defined(__ARM_NEON) || defined(__ARM_NEON__)
+#include <arm_neon.h>
+#endif
 #include "Mandelbrot.h"
 
 using namespace std;
 
 namespace Mandelbrot{
+
+#if defined(__ARM_NEON) || defined(__ARM_NEON__)
+static inline void getIterationsNeon4(float32x4_t c_re, float32x4_t c_im, int out_iters[4]){
+    const float32x4_t threshold2 = vdupq_n_f32(4.0f);
+    float32x4_t z_re = vdupq_n_f32(0.0f);
+    float32x4_t z_im = vdupq_n_f32(0.0f);
+    int32x4_t iters = vdupq_n_s32(0);
+    uint32x4_t active = vdupq_n_u32(0xFFFFFFFFu);
+
+    for (int i = 0; i < Mandelbrot::MAX_ITERATIONS; i++){
+        float32x4_t z_re2 = vmulq_f32(z_re, z_re);
+        float32x4_t z_im2 = vmulq_f32(z_im, z_im);
+        float32x4_t z_re_im = vmulq_f32(z_re, z_im);
+
+        float32x4_t z_re_new = vaddq_f32(vsubq_f32(z_re2, z_im2), c_re);
+        float32x4_t z_im_new = vaddq_f32(vaddq_f32(z_re_im, z_re_im), c_im);
+
+        float32x4_t mag2 = vaddq_f32(vmulq_f32(z_re_new, z_re_new), vmulq_f32(z_im_new, z_im_new));
+        uint32x4_t still_in = vcleq_f32(mag2, threshold2);
+
+        uint32x4_t inc_mask = vandq_u32(active, still_in);
+        iters = vaddq_s32(iters, vreinterpretq_s32_u32(vandq_u32(inc_mask, vdupq_n_u32(1))));
+
+        z_re = z_re_new;
+        z_im = z_im_new;
+        active = inc_mask;
+
+        if (vmaxvq_u32(active) == 0){
+            break;
+        }
+    }
+
+    vst1q_s32(out_iters, iters);
+}
+#endif
 
 Mandelbrot::Mandelbrot(int width, int height, const int N_THREADS):
     _bitmap(width, height),
@@ -50,7 +89,33 @@ void Mandelbrot::draw(string fileName, drawColor colourSelection ){
 
     auto work = [&](int thread_id){
         for (int y = thread_id; y < _height; y+= NUM_THREADS){
-            for (int x = 0; x < _width; x++){
+            int x = 0;
+#if defined(__ARM_NEON) || defined(__ARM_NEON__)
+            const float32x4_t x_step = vdupq_n_f32(2.0f/_width);
+            const float32x4_t x_base = vdupq_n_f32((-_width/2.0f - 150.0f) * 2.0f/_width);
+            const float32x4_t y_fractal = vdupq_n_f32((y - _height/2.0f) * 2.0f/_width);
+            for (; x + 3 < _width; x += 4){
+                int32_t x_vals[4] = {x, x + 1, x + 2, x + 3};
+                float32x4_t x_offsets = vcvtq_f32_s32(vld1q_s32(x_vals));
+                float32x4_t c_re = vaddq_f32(x_base, vmulq_f32(x_offsets, x_step));
+                float32x4_t c_im = y_fractal;
+
+                int iters[4];
+                getIterationsNeon4(c_re, c_im, iters);
+
+                unique_lock<mutex> l(histMutex);
+                for (int lane = 0; lane < 4; lane++){
+                    int idx = y*_width + (x + lane);
+                    int num_iters = iters[lane];
+                    pfractalData[idx] = num_iters;
+                    if (num_iters != MAX_ITERATIONS){
+                        p[num_iters]++;
+                    }
+                }
+                l.unlock();
+            }
+#else
+            for (; x < _width; x++){
                 double xFractal = (x - _width/2 - 150) * 2.0/_width;
                 double yFractal = (y - _height/2) * 2.0/_width;
 
@@ -66,6 +131,7 @@ void Mandelbrot::draw(string fileName, drawColor colourSelection ){
                 }
                 l.unlock();
             }
+#endif
         }
     };
 
@@ -153,4 +219,3 @@ bool Mandelbrot::_validHistogram(){
     return false;
 }
 }
-
