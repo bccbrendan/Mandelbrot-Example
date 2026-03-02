@@ -114,7 +114,7 @@ void Mandelbrot::draw(string fileName, drawColor colourSelection ){
                 }
                 l.unlock();
             }
-#else
+#endif
             for (; x < _width; x++){
                 double xFractal = (x - _width/2 - 150) * 2.0/_width;
                 double yFractal = (y - _height/2) * 2.0/_width;
@@ -131,7 +131,6 @@ void Mandelbrot::draw(string fileName, drawColor colourSelection ){
                 }
                 l.unlock();
             }
-#endif
         }
     };
 
