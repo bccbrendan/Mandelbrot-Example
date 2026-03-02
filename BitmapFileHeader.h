@@ -1,7 +1,7 @@
 #pragma once
 #include <cstdint>
 
-#pragma pack(2)
+#pragma pack(push, 2)
 
 namespace Mandelbrot{
 
@@ -13,3 +13,5 @@ struct BitmapFileHeader {
 };
 
 }
+
+#pragma pack(pop)

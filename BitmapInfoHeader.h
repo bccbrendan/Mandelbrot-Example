@@ -4,7 +4,7 @@
 
 using namespace std;
 
-#pragma pack(2)
+#pragma pack(push, 2)
 
 namespace Mandelbrot {
 
@@ -24,3 +24,5 @@ struct BitmapInfoHeader{
 };
 
 }
+
+#pragma pack(pop)
