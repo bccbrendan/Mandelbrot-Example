@@ -4,6 +4,16 @@
 #include <vector>
 #include <math.h>
 #include <cstdint>
+#if defined(__has_include)
+#if __has_include(<arm_sve.h>)
+#define MANDELBROT_HAS_ARM_SVE_HEADER 1
+#include <arm_sve.h>
+#endif
+#if __has_include(<arm_sve2.h>)
+#define MANDELBROT_HAS_ARM_SVE2_HEADER 1
+#include <arm_sve2.h>
+#endif
+#endif
 #if defined(__ARM_NEON) || defined(__ARM_NEON__)
 #include <arm_neon.h>
 #endif
@@ -13,7 +23,40 @@ using namespace std;
 
 namespace Mandelbrot{
 
-#if defined(__ARM_NEON) || defined(__ARM_NEON__)
+#if (defined(MANDELBROT_HAS_ARM_SVE_HEADER) || defined(MANDELBROT_HAS_ARM_SVE2_HEADER)) && defined(__ARM_FEATURE_SVE)
+static inline void getIterationsSve(svfloat32_t c_re, svfloat32_t c_im, int32_t out_iters[], svbool_t pg){
+    const svfloat32_t threshold2 = svdup_f32(4.0f);
+    svfloat32_t z_re = svdup_f32(0.0f);
+    svfloat32_t z_im = svdup_f32(0.0f);
+    svint32_t iters = svdup_s32(0);
+    svbool_t active = pg;
+
+    for (int i = 0; i < Mandelbrot::MAX_ITERATIONS; i++){
+        if (!svptest_any(pg, active)){
+            break;
+        }
+
+        svfloat32_t z_re2 = svmul_f32_x(pg, z_re, z_re);
+        svfloat32_t z_im2 = svmul_f32_x(pg, z_im, z_im);
+        svfloat32_t z_re_im = svmul_f32_x(pg, z_re, z_im);
+
+        svfloat32_t z_re_new = svadd_f32_x(pg, svsub_f32_x(pg, z_re2, z_im2), c_re);
+        svfloat32_t z_im_new = svadd_f32_x(pg, svadd_f32_x(pg, z_re_im, z_re_im), c_im);
+
+        svfloat32_t mag2 = svadd_f32_x(pg, svmul_f32_x(pg, z_re_new, z_re_new), svmul_f32_x(pg, z_im_new, z_im_new));
+        svbool_t still_in = svcmple_f32(pg, mag2, threshold2);
+
+        svbool_t inc_mask = svand_b_z(pg, active, still_in);
+        iters = svadd_s32_m(inc_mask, iters, svdup_s32(1));
+
+        z_re = svsel_f32(inc_mask, z_re_new, z_re);
+        z_im = svsel_f32(inc_mask, z_im_new, z_im);
+        active = inc_mask;
+    }
+
+    svst1_s32(pg, out_iters, iters);
+}
+#elif defined(__ARM_NEON) || defined(__ARM_NEON__)
 static inline void getIterationsNeon4(float32x4_t c_re, float32x4_t c_im, int out_iters[4]){
     const float32x4_t threshold2 = vdupq_n_f32(4.0f);
     float32x4_t z_re = vdupq_n_f32(0.0f);
@@ -88,9 +131,38 @@ void Mandelbrot::draw(string fileName, drawColor colourSelection ){
     threads.reserve(NUM_THREADS);
 
     auto work = [&](int thread_id){
+#if (defined(MANDELBROT_HAS_ARM_SVE_HEADER) || defined(MANDELBROT_HAS_ARM_SVE2_HEADER)) && defined(__ARM_FEATURE_SVE)
+        const uint64_t sve_lanes = svcntw();
+        std::vector<int32_t> sve_iters(sve_lanes);
+#endif
         for (int y = thread_id; y < _height; y+= NUM_THREADS){
             int x = 0;
-#if defined(__ARM_NEON) || defined(__ARM_NEON__)
+#if (defined(MANDELBROT_HAS_ARM_SVE_HEADER) || defined(MANDELBROT_HAS_ARM_SVE2_HEADER)) && defined(__ARM_FEATURE_SVE)
+            const float x_step = 2.0f/_width;
+            const float x_base = (-_width/2.0f - 150.0f) * x_step;
+            const float y_fractal = (y - _height/2.0f) * x_step;
+            for (; x < _width; x += static_cast<int>(sve_lanes)){
+                svbool_t pg = svwhilelt_b32(static_cast<uint64_t>(x), static_cast<uint64_t>(_width));
+                svint32_t x_vals = svindex_s32(x, 1);
+                svfloat32_t x_offsets = svcvt_f32_s32_x(pg, x_vals);
+                svfloat32_t c_re = svadd_f32_x(pg, svdup_f32(x_base), svmul_n_f32_x(pg, x_offsets, x_step));
+                svfloat32_t c_im = svdup_f32(y_fractal);
+
+                getIterationsSve(c_re, c_im, sve_iters.data(), pg);
+
+                unique_lock<mutex> l(histMutex);
+                const int active_lanes = static_cast<int>(svcntp_b32(svptrue_b32(), pg));
+                for (int lane = 0; lane < active_lanes; lane++){
+                    int idx = y*_width + (x + lane);
+                    int num_iters = sve_iters[lane];
+                    pfractalData[idx] = num_iters;
+                    if (num_iters != MAX_ITERATIONS){
+                        p[num_iters]++;
+                    }
+                }
+                l.unlock();
+            }
+#elif defined(__ARM_NEON) || defined(__ARM_NEON__)
             const float32x4_t x_step = vdupq_n_f32(2.0f/_width);
             const float32x4_t x_base = vdupq_n_f32((-_width/2.0f - 150.0f) * 2.0f/_width);
             const float32x4_t y_fractal = vdupq_n_f32((y - _height/2.0f) * 2.0f/_width);
