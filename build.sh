@@ -1,14 +1,58 @@
 #!/bin/bash
+
 set -euo pipefail
 
-CXXFLAGS=(--std=c++11 -g -O0)
-SOURCES=(main.cpp Mandelbrot.cpp bitmap.cpp)
-OUTPUT=./builds/mandelbrot-parallel
+MODE="${1:-release}"
+CXX="${CXX:-g++}"
+SRC=(main.cpp Mandelbrot.cpp bitmap.cpp)
+OUT_DIR="./builds"
 
-g++ "${CXXFLAGS[@]}" "$@" "${SOURCES[@]}" -o "$OUTPUT"
+mkdir -p "$OUT_DIR"
 
+case "$MODE" in
+	mandelbrot-sve2)
+		OUT="$OUT_DIR/mandelbrot-sve2"
+		CXXFLAGS=(
+			--std=c++11
+			-O3
+            -march=armv9-a+sve2
+			-mcpu=neoverse-n1+crc+crypto
+			-ffast-math
+			-funroll-loops
+			-flto
+			-DNDEBUG
+		)
+		;;
+	mandelbrot-sve)
+		OUT="$OUT_DIR/mandelbrot-sve"
+		CXXFLAGS=(
+			--std=c++11
+			-O3
+            -march=armv8.2-a+sve
+			-mcpu=neoverse-n1+crc+crypto
+			-ffast-math
+			-funroll-loops
+			-flto
+			-DNDEBUG
+		)
+		;;
+	mandelbrot-n1)
+		OUT="$OUT_DIR/mandelbrot-n1"
+		CXXFLAGS=(
+			--std=c++11
+			-O3
+			-mcpu=neoverse-n1+crc+crypto
+			-ffast-math
+			-funroll-loops
+			-flto
+			-DNDEBUG
+		)
+		;;
+	*)
+		echo "Usage: $0 [debug|release]"
+		exit 1
+		;;
+esac
 
-# use like
-# ./build.sh -DMANDELBROT_USE_SVE -march=armv8.2-a+sve -o ./builds/mandelbrot-parallel-sve
-
-# ./build.sh -DMANDELBROT_USE_SVE2 -march=armv9-a+sve2 -o ./builds/mandelbrot-parallel-sve2
+echo "Building $MODE -> $OUT"
+"$CXX" "${CXXFLAGS[@]}" "${SRC[@]}" -o "$OUT"
