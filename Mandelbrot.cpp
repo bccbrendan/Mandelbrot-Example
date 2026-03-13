@@ -19,11 +19,33 @@
 #endif
 #include "Mandelbrot.h"
 
+#if defined(MANDELBROT_USE_SVE2) && !defined(MANDELBROT_USE_SVE)
+#define MANDELBROT_USE_SVE 1
+#endif
+
+#if defined(MANDELBROT_USE_SVE)
+#if !defined(MANDELBROT_HAS_ARM_SVE_HEADER)
+#error "MANDELBROT_USE_SVE requires <arm_sve.h>."
+#endif
+#if !defined(__ARM_FEATURE_SVE)
+#error "MANDELBROT_USE_SVE requires an SVE target (e.g. -march=armv8.2-a+sve)."
+#endif
+#endif
+
+#if defined(MANDELBROT_USE_SVE2)
+#if !defined(MANDELBROT_HAS_ARM_SVE2_HEADER)
+#error "MANDELBROT_USE_SVE2 requires <arm_sve2.h>."
+#endif
+#if !defined(__ARM_FEATURE_SVE2)
+#error "MANDELBROT_USE_SVE2 requires an SVE2 target (e.g. -march=armv9-a+sve2)."
+#endif
+#endif
+
 using namespace std;
 
 namespace Mandelbrot{
 
-#if (defined(MANDELBROT_HAS_ARM_SVE_HEADER) || defined(MANDELBROT_HAS_ARM_SVE2_HEADER)) && defined(__ARM_FEATURE_SVE)
+#if defined(MANDELBROT_USE_SVE)
 static inline void getIterationsSve(svfloat32_t c_re, svfloat32_t c_im, int32_t out_iters[], svbool_t pg){
     const svfloat32_t threshold2 = svdup_f32(4.0f);
     svfloat32_t z_re = svdup_f32(0.0f);
@@ -131,13 +153,13 @@ void Mandelbrot::draw(string fileName, drawColor colourSelection ){
     threads.reserve(NUM_THREADS);
 
     auto work = [&](int thread_id){
-#if (defined(MANDELBROT_HAS_ARM_SVE_HEADER) || defined(MANDELBROT_HAS_ARM_SVE2_HEADER)) && defined(__ARM_FEATURE_SVE)
+#if defined(MANDELBROT_USE_SVE)
         const uint64_t sve_lanes = svcntw();
         std::vector<int32_t> sve_iters(sve_lanes);
 #endif
         for (int y = thread_id; y < _height; y+= NUM_THREADS){
             int x = 0;
-#if (defined(MANDELBROT_HAS_ARM_SVE_HEADER) || defined(MANDELBROT_HAS_ARM_SVE2_HEADER)) && defined(__ARM_FEATURE_SVE)
+#if defined(MANDELBROT_USE_SVE)
             const float x_step = 2.0f/_width;
             const float x_base = (-_width/2.0f - 150.0f) * x_step;
             const float y_fractal = (y - _height/2.0f) * x_step;
