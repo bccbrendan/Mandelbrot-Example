@@ -19,7 +19,7 @@ public:
 public:
     Mandelbrot(int width, int height, const int N_THREADS);
     static int getIterations(double x, double y);
-    static const int MAX_ITERATIONS = (1<<9);
+    static const int MAX_ITERATIONS = (1<<10);
     void draw(string fileName, drawColor color);
     void printHistogram();
     ~Mandelbrot(){};

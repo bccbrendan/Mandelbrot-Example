@@ -8,8 +8,8 @@ BUILD_DIR = build
 CXX_FLAGS = --std=c++11
 CPP_FLAGS = -I${INCLUDE_DIR}
 
-PARALLEL_VERSION = main.cpp bitmap.cpp mandelbrot.cpp
-SINGLE_THREAD_VERSION = main.cpp bitmap.cpp mandelbrot_single_thread.cpp
+PARALLEL_VERSION = main_parallel.cpp bitmap.cpp mandelbrot_parallel.cpp
+SINGLE_THREAD_VERSION = main_single_thread.cpp bitmap.cpp mandelbrot_single_thread.cpp
 
 
 PARALLEL_OBJS = $(addprefix $(BUILD_DIR)/, $(PARALLEL_VERSION:.cpp=.o))
