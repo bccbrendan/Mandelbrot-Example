@@ -3,3 +3,4 @@ mandelbrot-parallel
 ./builds/*
 arg-test
 mandelbrot
+build
