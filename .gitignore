@@ -1,6 +1,7 @@
 mandelbrot-parallel
 ./images/*
 ./builds/*
+./build/*
 arg-test
 mandelbrot
 build
