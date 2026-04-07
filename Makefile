@@ -4,6 +4,7 @@ DEBUG ?= 0
 SRC_DIR = src
 INCLUDE_DIR = include
 BUILD_DIR = build
+IMAGES_DIR = images
 
 CXX_FLAGS = --std=c++11
 CPP_FLAGS = -I${INCLUDE_DIR}
@@ -37,9 +38,9 @@ $(BUILD_DIR)/%.o: $(SRC_DIR)/%.cpp | create
 	$(CXX) $(CPP_FLAGS) $(CXX_FLAGS) -c $< -o $@
 
 create:
-	mkdir -p $(BUILD_DIR)
+	mkdir -p $(BUILD_DIR) $(IMAGES_DIR)
 
 clean:
-	rm -rf $(BUILD_DIR)
+	rm -rf $(BUILD_DIR) $(IMAGES_DIR)
 
 .PHONY: clean create all
